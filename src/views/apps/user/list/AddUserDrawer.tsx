@@ -85,7 +85,7 @@ const AddUserDrawer = (props: Props) => {
         firstName: userData.firstName || '',
         lastName: userData.lastName || '',
         email: userData.email || '',
-        role: userData.role || 'employee',
+        role: userData.role as any || 'employee',
         password: '', // Do not prefill password for security
         isActive: userData.isActive ?? true
       });

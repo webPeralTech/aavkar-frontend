@@ -2,6 +2,8 @@
 
 // React Imports
 import { useState, useEffect, useMemo } from 'react'
+import { useDispatch, useSelector } from 'react-redux'
+import { deleteCustomer, fetchCustomers } from '@/redux-store/slices/customer'
 
 // Next Imports
 import Link from 'next/link'
@@ -52,6 +54,9 @@ import { getLocalizedUrl } from '@/utils/i18n'
 
 // Style Imports
 import tableStyles from '@core/styles/table.module.css'
+import { RootState, useAppDispatch } from '@/redux-store'
+import { Chip, CircularProgress, Dialog, DialogActions, DialogContent, DialogContentText, DialogTitle, IconButton } from '@mui/material'
+import OptionMenu from '@/@core/components/option-menu'
 
 declare module '@tanstack/table-core' {
   interface FilterFns {
@@ -134,91 +139,155 @@ const DebouncedInput = ({
 // Column Definitions
 const columnHelper = createColumnHelper<ECommerceOrderTypeWithAction>()
 
-const CustomerListTable = ({ customerData }: { customerData?: Customer[] }) => {
+const CustomerListTable = () => {
+  // Redux
+  const dispatch = useAppDispatch()
+  const { customers, loading, total, page, pageSize, search, createdCustomerData, updatedCustomerData, deletedCustomerData } = useSelector((state: RootState) => state.customer)
+
   // States
   const [customerUserOpen, setCustomerUserOpen] = useState(false)
-  const [rowSelection, setRowSelection] = useState({})
-  const [data, setData] = useState(...[customerData])
-  const [globalFilter, setGlobalFilter] = useState('')
-
+  const [rowSelection, setRowSelection] = useState<{}>({})
+  const [globalFilter, setGlobalFilter] = useState(search || '')
+  // Delete dialog state
+  const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [userIdToDelete, setUserIdToDelete] = useState<string | null>(null);
+  // Add and edit customer state
+  const [addCustomerOpen, setAddCustomerOpen] = useState(false);
+  const [editCustomerOpen, setEditCustomerOpen] = useState(false);
+  const [editCustomerData, setEditCustomerData] = useState<any>(null);
   // Hooks
   const { lang: locale } = useParams()
 
+  // Fetch customers
+  useEffect(() => {
+    dispatch(fetchCustomers({ page, pageSize, search: globalFilter }))
+  }, [dispatch, page, pageSize, globalFilter, createdCustomerData, updatedCustomerData, deletedCustomerData])
+
+  const handlePageChange = (_: any, newPage: number) => {
+    dispatch(fetchCustomers({
+      page: newPage + 1,
+      pageSize,
+      search,
+    }) as any);
+  };
+  const handleRowsPerPageChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    dispatch(fetchCustomers({
+      page: 1,
+      pageSize: parseInt(event.target.value, 10),
+      search,
+    }) as any);
+  };
+
+  const handleDelete = (id: string) => {
+    dispatch(deleteCustomer(id) as any);
+  };
   const columns = useMemo<ColumnDef<ECommerceOrderTypeWithAction, any>[]>(
     () => [
       {
         id: 'select',
-        header: ({ table }) => (
-          <Checkbox
-            {...{
-              checked: table.getIsAllRowsSelected(),
-              indeterminate: table.getIsSomeRowsSelected(),
-              onChange: table.getToggleAllRowsSelectedHandler()
-            }}
-          />
-        ),
-        cell: ({ row }) => (
-          <Checkbox
-            {...{
-              checked: row.getIsSelected(),
-              disabled: !row.getCanSelect(),
-              indeterminate: row.getIsSomeSelected(),
-              onChange: row.getToggleSelectedHandler()
-            }}
-          />
-        )
+        header: ({ table }) => <Checkbox />,
+        cell: ({ row }) => <Checkbox />
       },
-      columnHelper.accessor('customer', {
-        header: 'Customers',
+      columnHelper.accessor('_id', {
+        header: 'Avatar',
         cell: ({ row }) => (
-          <div className='flex items-center gap-3'>
-            {getAvatar({ avatar: row.original.avatar, customer: row.original.customer })}
-            <div className='flex flex-col items-start'>
-              <Typography
-                component={Link}
-                color='text.primary'
-                href={getLocalizedUrl(`/apps/ecommerce/customers/details/${row.original.customerId}`, locale as Locale)}
-                className='font-medium hover:text-primary'
-              >
-                {row.original.customer}
-              </Typography>
-              <Typography variant='body2'>{row.original.email}</Typography>
-            </div>
-          </div>
+          <CustomAvatar
+            alt={row.original.firstName + ' ' + row.original.lastName}
+            size={34}
+          />
         )
       }),
-      columnHelper.accessor('customerId', {
-        header: 'Customer Id',
-        cell: ({ row }) => <Typography color='text.primary'>#{row.original.customerId}</Typography>
-      }),
-      columnHelper.accessor('country', {
-        header: 'Country',
+      columnHelper.accessor('firstName', {
+        header: 'First Name',
         cell: ({ row }) => (
-          <div className='flex items-center gap-2'>
-            <img src={row.original.countryFlag} height={22} />
-            <Typography>{row.original.country}</Typography>
-          </div>
-        )
-      }),
-      columnHelper.accessor('order', {
-        header: 'Orders',
-        cell: ({ row }) => <Typography>{row.original.order}</Typography>
-      }),
-      columnHelper.accessor('totalSpent', {
-        header: 'Total Spent',
-        cell: ({ row }) => (
-          <Typography className='font-medium' color='text.primary'>
-            ${row.original.totalSpent.toLocaleString()}
+          <Typography color='text.primary' fontWeight='medium'>
+            {row.original.firstName}
           </Typography>
+        )
+      }),
+      columnHelper.accessor('lastName', {
+        header: 'Last Name',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.lastName}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('email', {
+        header: 'Email',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.email}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('phone', {
+        header: 'Phone',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.phone || '-'}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('company', {
+        header: 'Company',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.company || '-'}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('gst_no', {
+        header: 'GST No.',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.gst_no || '-'}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('address', {
+        header: 'Address',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.address || '-'}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('city', {
+        header: 'City',
+        cell: ({ row }) => (
+          <Typography color='text.primary'>
+            {row.original.city || '-'}
+          </Typography>
+        )
+      }),
+      columnHelper.accessor('action', {
+        header: 'Action',
+        cell: ({ row }) => (
+          <div className='flex items-center'>
+            <IconButton>
+              <Link href={getLocalizedUrl('/apps/user/view', locale as Locale)} className='flex'>
+                <i className='tabler-eye text-textSecondary' />
+              </Link>
+            </IconButton>
+            <IconButton onClick={() => { setEditCustomerOpen(true); setEditCustomerData(row.original); }}>
+              <i className='tabler-edit text-textSecondary' />
+            </IconButton>
+            <IconButton onClick={() => {
+              setDeleteDialogOpen(true);
+              setUserIdToDelete(row.original._id as string);
+            }}>
+              <i className='tabler-trash text-textSecondary' />
+            </IconButton>
+          </div>
         )
       })
     ],
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    []
+    [locale]
   )
 
   const table = useReactTable({
-    data: data as Customer[],
+    data: customers as Customer[],
     columns,
     filterFns: {
       fuzzy: fuzzyFilter
@@ -246,15 +315,15 @@ const CustomerListTable = ({ customerData }: { customerData?: Customer[] }) => {
     getFacetedMinMaxValues: getFacetedMinMaxValues()
   })
 
-  const getAvatar = (params: Pick<Customer, 'avatar' | 'customer'>) => {
-    const { avatar, customer } = params
+  const getAvatar = (params: Pick<Customer, '_id' | 'firstName' | 'lastName'>) => {
+    const { _id, firstName, lastName } = params
 
-    if (avatar) {
-      return <CustomAvatar src={avatar} skin='light' size={34} />
+    if (_id) {
+      return <CustomAvatar src={_id} skin='light' size={34} />
     } else {
       return (
         <CustomAvatar skin='light' size={34}>
-          {getInitials(customer as string)}
+          {getInitials(`${firstName} ${lastName}`)}
         </CustomAvatar>
       )
     }
@@ -269,6 +338,7 @@ const CustomerListTable = ({ customerData }: { customerData?: Customer[] }) => {
             onChange={value => setGlobalFilter(String(value))}
             placeholder='Search'
             className='max-sm:is-full'
+            disabled={loading}
           />
           <div className='flex max-sm:flex-col items-start sm:items-center gap-4 max-sm:is-full'>
             <CustomTextField
@@ -330,48 +400,67 @@ const CustomerListTable = ({ customerData }: { customerData?: Customer[] }) => {
                 </tr>
               ))}
             </thead>
-            {table.getFilteredRowModel().rows.length === 0 ? (
+            {table.getRowModel().rows.length === 0 ? (
               <tbody>
                 <tr>
                   <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    No data available
+                    {loading ? <CircularProgress /> : 'No data available'}
                   </td>
                 </tr>
               </tbody>
             ) : (
               <tbody>
-                {table
-                  .getRowModel()
-                  .rows.slice(0, table.getState().pagination.pageSize)
-                  .map(row => {
-                    return (
-                      <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
-                        {row.getVisibleCells().map(cell => (
-                          <td key={cell.id}>{flexRender(cell.column.columnDef.cell, cell.getContext())}</td>
-                        ))}
-                      </tr>
-                    )
-                  })}
+                {table.getRowModel().rows.map(row => (
+                  <tr key={row.id} className={classnames({ selected: row.getIsSelected() })}>
+                    {row.getVisibleCells().map(cell => (
+                      <td key={cell.id}>
+                        {flexRender(cell.column.columnDef.cell, cell.getContext())}
+                      </td>
+                    ))}
+                  </tr>
+                ))}
               </tbody>
             )}
           </table>
         </div>
         <TablePagination
-          component={() => <TablePaginationComponent table={table} />}
-          count={table.getFilteredRowModel().rows.length}
-          rowsPerPage={table.getState().pagination.pageSize}
-          page={table.getState().pagination.pageIndex}
-          onPageChange={(_, page) => {
-            table.setPageIndex(page)
-          }}
+          count={total}
+          rowsPerPage={pageSize}
+          page={page - 1}
+          onPageChange={handlePageChange}
+          onRowsPerPageChange={handleRowsPerPageChange}
+        // component={() => <TablePaginationComponent table={table} />}
         />
       </Card>
       <AddCustomerDrawer
-        open={customerUserOpen}
-        handleClose={() => setCustomerUserOpen(!customerUserOpen)}
-        setData={setData}
-        customerData={data}
+        open={customerUserOpen || editCustomerOpen}
+        handleClose={() => {
+          setCustomerUserOpen(false);
+          setEditCustomerOpen(false);
+          setEditCustomerData(null);
+        }}
+        // After add, refetch customers
+        setData={() => dispatch(fetchCustomers({ page, pageSize, search: globalFilter }))}
+        editMode={editCustomerOpen}
+        customerData={editCustomerData || customers}
       />
+
+      <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
+        <DialogTitle>Confirm Delete</DialogTitle>
+        <DialogContent>
+          <DialogContentText>
+            Are you sure you want to delete this user? This action cannot be undone.
+          </DialogContentText>
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setDeleteDialogOpen(false)} color="primary">
+            Cancel
+          </Button>
+          <Button onClick={() => { if (userIdToDelete) { handleDelete(userIdToDelete); } setDeleteDialogOpen(false); }} color="error">
+            Delete
+          </Button>
+        </DialogActions>
+      </Dialog>
     </>
   )
 }

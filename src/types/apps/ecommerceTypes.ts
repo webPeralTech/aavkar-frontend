@@ -1,31 +1,29 @@
 export type Customer = {
-  id: number
-  customer: string
-  customerId: string
+  _id?: string
+  firstName: string
+  lastName: string
   email: string
-  country: string
-  countryCode: string
-  countryFlag?: string
-  order: number
-  totalSpent: number
-  avatar: string
-  status?: string
-  contact?: string
+  phone?: string
+  company?: string
+  gst_no?: string
+  address?: string
+  city?: string
+  notes?: string
 }
 
 export type ReferralsType = {
-  id: number
+  _id: string
   user: string
   email: string
   avatar: string
-  referredId: number
+  referredId: string
   status: string
   value: string
   earning: string
 }
 
 export type ReviewType = {
-  id: number
+  _id: string
   product: string
   companyName: string
   productImage: string
@@ -40,7 +38,7 @@ export type ReviewType = {
 }
 
 export type ProductType = {
-  id: number
+  _id: string
   productName: string
   category: string
   stock: boolean
@@ -53,7 +51,7 @@ export type ProductType = {
 }
 
 export type OrderType = {
-  id: number
+  _id: string
   order: string
   customer: string
   email: string

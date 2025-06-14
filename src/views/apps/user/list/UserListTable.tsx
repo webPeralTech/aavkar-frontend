@@ -315,7 +315,8 @@ const UserListTable = () => {
     },
     initialState: {
       pagination: {
-        pageSize: pageSize
+        pageSize: pageSize - 1,
+        pageIndex: page
       }
     },
     enableRowSelection: true,
@@ -328,6 +329,7 @@ const UserListTable = () => {
     getFacetedRowModel: getFacetedRowModel(),
     getFacetedUniqueValues: getFacetedUniqueValues(),
     getFacetedMinMaxValues: getFacetedMinMaxValues(),
+
   });
 
   // Redux-powered fetch on mount and when filters/search/page/pageSize change
@@ -515,6 +517,7 @@ const UserListTable = () => {
           page={page - 1}
           onPageChange={handlePageChange}
           onRowsPerPageChange={handleRowsPerPageChange}
+        // component={() => <TablePaginationComponent table={table} />}
         />
       </Card>
       {/* AddUserDrawer can be kept as is if needed */}
