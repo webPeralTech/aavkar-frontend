@@ -1,4 +1,5 @@
 import { createSlice, createAsyncThunk } from '@reduxjs/toolkit';
+import { UsersType } from '@/types/apps/userTypes';
 import axios from '@/libs/axios';
 import { toast } from 'react-toastify';
 
@@ -23,7 +24,9 @@ interface UserState {
     pages: number;
     filters: Record<string, any>;
     search: string;
+    updatedUserData: UsersType | null;
     deletedUserData: string | null;
+    createdUserData: UsersType | null;
 }
 
 const initialState: UserState = {
@@ -37,7 +40,9 @@ const initialState: UserState = {
     pages: 1,
     filters: {},
     search: '',
+    updatedUserData: null,
     deletedUserData: null,
+    createdUserData: null,
 };
 
 export const fetchUsers = createAsyncThunk(
@@ -82,9 +87,10 @@ export const fetchUser = createAsyncThunk(
 
 export const createUser = createAsyncThunk(
     'user/createUser',
-    async (userData: Partial<User>, { rejectWithValue }) => {
+    async (userData: Partial<UsersType>, { rejectWithValue }) => {
         try {
-            const response = await axios.post('/users', userData);
+            const response = await axios.post('/users/register', userData);
+            console.log("user-response", response.data);
             return response.data;
         } catch (err: any) {
             return rejectWithValue(err.response?.data?.message || 'Failed to create user');
@@ -94,7 +100,7 @@ export const createUser = createAsyncThunk(
 
 export const updateUser = createAsyncThunk(
     'user/updateUser',
-    async ({ id, userData }: { id: string; userData: Partial<User> }, { rejectWithValue }) => {
+    async ({ id, userData }: { id: string; userData: Partial<UsersType> }, { rejectWithValue }) => {
         try {
             const response = await axios.put(`/users/${id}`, userData);
             return response.data;
@@ -170,8 +176,9 @@ const userSlice = createSlice({
             })
             .addCase(createUser.fulfilled, (state, action) => {
                 toast.success('User created successfully');
+                console.log("user-action", action.payload);
                 state.loading = false;
-                state.users.push(action.payload);
+                state.createdUserData = action.payload;
             })
             .addCase(createUser.rejected, (state, action) => {
                 toast.error(action.payload as string || 'Failed to create user');
@@ -186,10 +193,7 @@ const userSlice = createSlice({
             .addCase(updateUser.fulfilled, (state, action) => {
                 toast.success('User updated successfully');
                 state.loading = false;
-                state.users = state.users.map(u => u.id === action.payload.id ? action.payload : u);
-                if (state.user && state.user.id === action.payload.id) {
-                    state.user = action.payload;
-                }
+                state.updatedUserData = action.payload;
             })
             .addCase(updateUser.rejected, (state, action) => {
                 toast.error(action.payload as string || 'Failed to update user');

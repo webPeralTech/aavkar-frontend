@@ -21,33 +21,62 @@ const TableFilters = () => {
 
   const handleRoleChange = (e: any) => {
     dispatch(fetchUsers({
-      page: 1,
+      page: page,
       pageSize,
       search,
       filters: { ...filters, role: e.target.value }
     }) as any);
   };
-  const handlePlanChange = (e: any) => {
-    dispatch(fetchUsers({
-      page: 1,
-      pageSize,
-      search,
-      filters: { ...filters, plan: e.target.value }
-    }) as any);
+
+  // Local state for search input
+  const [searchInput, setSearchInput] = useState(search);
+  const debounceRef = useState<{ timeout: NodeJS.Timeout | null }>({ timeout: null })[0];
+
+  // Sync local state if Redux search changes externally
+  useEffect(() => {
+    setSearchInput(search);
+  }, [search]);
+
+  const handleSearchChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const value = e.target.value;
+    setSearchInput(value); // update input immediately
+    if (debounceRef.timeout) clearTimeout(debounceRef.timeout);
+    debounceRef.timeout = setTimeout(() => {
+      dispatch(fetchUsers({
+        page: page,
+        pageSize,
+        search: value,
+        filters
+      }) as any);
+    }, 1000);
   };
+
   const handleStatusChange = (e: any) => {
     dispatch(fetchUsers({
-      page: 1,
+      page: page,
       pageSize,
       search,
       filters: { ...filters, status: e.target.value }
     }) as any);
   };
 
-
   return (
     <CardContent>
       <Grid container spacing={6}>
+        <Grid size={{ xs: 12, sm: 4 }}>
+          <CustomTextField
+            fullWidth
+            id='search-users'
+            placeholder='Search users...'
+            value={searchInput}
+            onChange={handleSearchChange}
+            InputProps={{
+              startAdornment: (
+                <i className='tabler-search text-xl text-textSecondary' style={{ marginRight: 8 }} />
+              )
+            }}
+          />
+        </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
           <CustomTextField
             select
@@ -61,28 +90,10 @@ const TableFilters = () => {
           >
             <MenuItem value=''>Select Role</MenuItem>
             <MenuItem value='admin'>Admin</MenuItem>
-            <MenuItem value='author'>Author</MenuItem>
-            <MenuItem value='editor'>Editor</MenuItem>
-            <MenuItem value='maintainer'>Maintainer</MenuItem>
-            <MenuItem value='subscriber'>Subscriber</MenuItem>
-          </CustomTextField>
-        </Grid>
-        <Grid size={{ xs: 12, sm: 4 }}>
-          <CustomTextField
-            select
-            fullWidth
-            id='select-plan'
-            value={filters.plan || ''}
-            onChange={handlePlanChange}
-            slotProps={{
-              select: { displayEmpty: true }
-            }}
-          >
-            <MenuItem value=''>Select Plan</MenuItem>
-            <MenuItem value='basic'>Basic</MenuItem>
-            <MenuItem value='company'>Company</MenuItem>
-            <MenuItem value='enterprise'>Enterprise</MenuItem>
-            <MenuItem value='team'>Team</MenuItem>
+            <MenuItem value='manager'>Manager</MenuItem>
+            <MenuItem value='employee'>Employee</MenuItem>
+            <MenuItem value='sales'>Sales</MenuItem>
+            <MenuItem value='printing operator'>Printing Operator</MenuItem>
           </CustomTextField>
         </Grid>
         <Grid size={{ xs: 12, sm: 4 }}>
@@ -97,7 +108,6 @@ const TableFilters = () => {
             }}
           >
             <MenuItem value=''>Select Status</MenuItem>
-            <MenuItem value='pending'>Pending</MenuItem>
             <MenuItem value='active'>Active</MenuItem>
             <MenuItem value='inactive'>Inactive</MenuItem>
           </CustomTextField>

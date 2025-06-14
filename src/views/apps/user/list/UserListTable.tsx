@@ -24,6 +24,7 @@ import DialogTitle from '@mui/material/DialogTitle'
 import DialogContent from '@mui/material/DialogContent'
 import DialogContentText from '@mui/material/DialogContentText'
 import DialogActions from '@mui/material/DialogActions'
+import CircularProgress from '@mui/material/CircularProgress';
 
 // Third-party Imports
 import classnames from 'classnames'
@@ -160,11 +161,13 @@ const UserListTable = () => {
   const [userIdToDelete, setUserIdToDelete] = useState<string | null>(null);
   // States
   const [addUserOpen, setAddUserOpen] = useState(false);
+  const [editUserOpen, setEditUserOpen] = useState(false);
+  const [editUserData, setEditUserData] = useState<any>(null);
   const [rowSelection, setRowSelection] = useState({});
   const dispatch = useAppDispatch();
-  const { users, total, page, pageSize, filters, search, loading, deletedUserData } = useSelector((state: any) => state.user);
+  const { users, total, page, pageSize, filters, search, loading, deletedUserData, createdUserData, updatedUserData } = useSelector((state: any) => state.user);
   const { lang: locale } = useParams();
-  console.log("users", users);
+
   const columns = useMemo<ColumnDef<UsersTypeWithAction, any>[]>(
     () => [
       {
@@ -335,7 +338,7 @@ const UserListTable = () => {
       search,
       filters
     }) as any);
-  }, [dispatch, page, pageSize, search, filters, deletedUserData]);
+  }, [dispatch, page, pageSize, search, filters, deletedUserData, createdUserData, updatedUserData]);
 
   const handlePageChange = (_: any, newPage: number) => {
     dispatch(fetchUsers({
@@ -403,7 +406,26 @@ const UserListTable = () => {
             </Button>
           </div>
         </div>
-        <div className='overflow-x-auto'>
+        <div className='overflow-x-auto' style={{ position: 'relative' }}>
+          {/* Loader overlay */}
+          {loading && (
+            <div
+              style={{
+                position: 'absolute',
+                top: 0,
+                left: 0,
+                width: '100%',
+                height: '100%',
+                background: 'rgba(255,255,255,0.7)',
+                zIndex: 2,
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center'
+              }}
+            >
+              <CircularProgress />
+            </div>
+          )}
           <table className={tableStyles.table}>
             <thead>
               {table.getHeaderGroups().map(headerGroup => (
@@ -436,7 +458,7 @@ const UserListTable = () => {
               <tbody>
                 <tr>
                   <td colSpan={table.getVisibleFlatColumns().length} className='text-center'>
-                    {loading ? 'Loading...' : 'No data available'}
+                    {loading ? <CircularProgress /> : 'No data available'}
                   </td>
                 </tr>
               </tbody>
@@ -474,7 +496,7 @@ const UserListTable = () => {
                       />
                     </td>
                     <td>
-                      <IconButton>
+                      <IconButton onClick={() => { setEditUserOpen(true); setEditUserData(user); }}>
                         <i className='tabler-edit text-textSecondary' />
                       </IconButton>
                       <IconButton onClick={() => { setDeleteDialogOpen(true); setUserIdToDelete(user._id); }}>
@@ -496,6 +518,16 @@ const UserListTable = () => {
         />
       </Card>
       {/* AddUserDrawer can be kept as is if needed */}
+      <AddUserDrawer
+        open={addUserOpen || editUserOpen}
+        handleClose={() => {
+          setAddUserOpen(false);
+          setEditUserOpen(false);
+          setEditUserData(null);
+        }}
+        editMode={editUserOpen}
+        userData={editUserData}
+      />
       <Dialog open={deleteDialogOpen} onClose={() => setDeleteDialogOpen(false)}>
         <DialogTitle>Confirm Delete</DialogTitle>
         <DialogContent>
